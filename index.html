@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent On Rails Setup</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="top">
+        <div class="brand">
+          <span class="mark" aria-hidden="true"></span>
+          <div>
+            <p class="brand-name">Agent On Rails</p>
+            <p class="brand-sub">Setup wizard</p>
+          </div>
+        </div>
+        <nav class="steps" id="step-nav" aria-label="Wizard steps"></nav>
+      </header>
+
+      <main id="panel" class="panel"></main>
+
+      <footer class="foot">
+        <button type="button" class="btn ghost" id="btn-back" hidden>Back</button>
+        <div class="foot-spacer"></div>
+        <button type="button" class="btn primary" id="btn-next">Continue</button>
+      </footer>
+    </div>
+  </body>
+</html>

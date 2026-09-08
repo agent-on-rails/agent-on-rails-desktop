@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Agent On Rails Setup",
+  "version": "0.1.0",
+  "identifier": "net.suherman.agent-on-rails.setup",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Agent On Rails Setup",
+        "width": 820,
+        "height": 640,
+        "resizable": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app", "msi", "nsis"],
+    "category": "DeveloperTool",
+    "shortDescription": "Install aor and bootstrap an Agent On Rails project",
+    "longDescription": "Thin macOS/Windows setup wizard for Agent On Rails (AOR-008). Installs the CLI and runs project bootstrap, then hands off to the terminal UI.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
