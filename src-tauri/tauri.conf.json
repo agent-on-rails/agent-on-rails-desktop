@@ -26,16 +26,47 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app", "msi", "nsis"],
+    "createUpdaterArtifacts": false,
+    "targets": [
+      "dmg",
+      "app",
+      "msi",
+      "nsis"
+    ],
     "category": "DeveloperTool",
     "shortDescription": "Install aor and bootstrap an Agent On Rails project",
-    "longDescription": "Thin macOS/Windows setup wizard for Agent On Rails (AOR-008). Installs the CLI and runs project bootstrap, then hands off to the terminal UI.",
+    "longDescription": "Thin macOS/Windows setup wizard for Agent On Rails (AOR-008). Installs the CLI and runs project bootstrap, then hands off to the terminal UI. Auto-updates via Sparkle on macOS.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": "Developer ID Application: Huge Shop Pty Ltd (Q3TXW887NM)",
+      "minimumSystemVersion": "12.0",
+      "frameworks": [
+        "Sparkle.framework"
+      ],
+      "infoPlist": "Info.plist",
+      "hardenedRuntime": true
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdBMTVFRDIwNEIxMDM5OTEKUldTUk9SQkxJTzBWZWpSVTdycTFaU2YzSHF3bzVxVko3NVgraFI2Tk5NMVlqQWZzT0hYS3gyZTcK",
+      "endpoints": [
+        "https://agent-on-rails.suherman.net/downloads/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

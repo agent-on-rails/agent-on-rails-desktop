@@ -10,7 +10,14 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-release
 *.local
+.env.release
+config/tauri-updater.key
+config/tauri-updater.key.pub
+src-tauri/sparkle-bin/
+src-tauri/Sparkle.framework/
+src-tauri/target/
 
 # Editor directories and files
 .vscode/*

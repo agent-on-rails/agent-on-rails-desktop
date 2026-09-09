@@ -35,6 +35,24 @@ npm run tauri build
 - macOS → `.app` / `.dmg`
 - Windows → `.msi` / NSIS (build on Windows)
 
+## Releases
+
+Signed **macOS** installers (Developer ID + notarization) and Sparkle updates are published to the website:
+
+- Download: https://agent-on-rails.suherman.net/downloads/Agent-On-Rails-Setup-macos.dmg
+- Appcast: https://agent-on-rails.suherman.net/downloads/appcast.xml
+
+See [`docs/RELEASING.md`](./docs/RELEASING.md) for the full pipeline.
+
+### Windows signing status
+
+Signed Windows MSI is **not** published as the primary download yet. The GitHub Actions **Release desktop** workflow can build Windows installers, but Authenticode signing requires repository secrets:
+
+- `WINDOWS_CERTIFICATE` — base64-encoded PFX
+- `WINDOWS_CERTIFICATE_PASSWORD`
+
+Without those secrets, CI may produce an **unsigned** artifact for smoke-testing only — do **not** treat unsigned MSI as the primary download. Prefer GitHub Releases for Windows once the certificate is configured.
+
 ## Boundaries
 
 See [`AGENTS.md`](./AGENTS.md). Day-to-day orchestration stays in [`agent-on-rails-cli`](https://github.com/agent-on-rails/agent-on-rails-cli).

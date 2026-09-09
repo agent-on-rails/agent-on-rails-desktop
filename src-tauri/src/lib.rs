@@ -302,10 +302,43 @@ fn links() -> serde_json::Value {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_shell::init());
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(tauri_plugin_sparkle_updater::init());
+    }
+    #[cfg(not(any(target_os = "android", target_os = "ios", target_os = "macos")))]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder
+        .setup(|app| {
+            #[cfg(not(any(target_os = "android", target_os = "ios", target_os = "macos")))]
+            {
+                use tauri_plugin_updater::UpdaterExt;
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Ok(updater) = handle.updater() {
+                        if let Ok(Some(update)) = updater.check().await {
+                            let _ = update.download_and_install(|_, _| {}, || {}).await;
+                        }
+                    }
+                });
+            }
+            #[cfg(target_os = "macos")]
+            {
+                use tauri_plugin_sparkle_updater::SparkleUpdaterExt;
+                if let Some(updater) = app.handle().sparkle_updater() {
+                    let _ = updater.check_for_updates_in_background();
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             check_prerequisites,
             install_cli,

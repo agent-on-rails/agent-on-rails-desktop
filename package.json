@@ -7,13 +7,18 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "release:macos": "bash scripts/release-macos.sh",
+    "sparkle:download": "bash scripts/download-sparkle.sh",
+    "sparkle:keys": "bash scripts/sparkle-setup-keys.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-opener": "^2",
-    "@tauri-apps/plugin-shell": "^2.3.6"
+    "@tauri-apps/plugin-shell": "^2.3.6",
+    "@tauri-apps/plugin-updater": "^2",
+    "tauri-plugin-sparkle-updater-api": "^0.2.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
