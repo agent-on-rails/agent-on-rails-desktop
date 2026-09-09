@@ -12,6 +12,7 @@ permissions:
 jobs:
   macos:
     runs-on: macos-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -96,6 +97,7 @@ jobs:
 
   release:
     needs: [macos, windows]
+    if: always() && needs.windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -104,7 +106,10 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('desktop-v0.1.0-ci-{0}', github.run_number) }}
+          name: Agent On Rails Setup ${{ github.ref_type == 'tag' && github.ref_name || format('CI #{0}', github.run_number) }}
           files: artifacts/**/*
           generate_release_notes: true
+          prerelease: ${{ github.ref_type != 'tag' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
