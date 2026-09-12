@@ -107,7 +107,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('desktop-v0.1.0-ci-{0}', github.run_number) }}
-          name: Agent On Rails Setup ${{ github.ref_type == 'tag' && github.ref_name || format('CI #{0}', github.run_number) }}
+          name: Agent On Rails ${{ github.ref_type == 'tag' && github.ref_name || format('CI #{0}', github.run_number) }}
           files: artifacts/**/*
           generate_release_notes: true
           prerelease: ${{ github.ref_type != 'tag' }}
