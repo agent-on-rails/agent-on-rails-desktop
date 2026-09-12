@@ -106,8 +106,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('desktop-v0.1.0-ci-{0}', github.run_number) }}
-          name: Agent On Rails ${{ github.ref_type == 'tag' && github.ref_name || format('CI #{0}', github.run_number) }}
+          # Avoid '#' inside unquoted YAML values (starts a comment and breaks ${{ }}).
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('desktop-ci-{0}', github.run_number) }}
+          name: ${{ github.ref_type == 'tag' && format('Agent On Rails {0}', github.ref_name) || format('Agent On Rails CI {0}', github.run_number) }}
           files: artifacts/**/*
           generate_release_notes: true
           prerelease: ${{ github.ref_type != 'tag' }}
