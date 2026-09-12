@@ -684,14 +684,55 @@ fn polish_stub_outline(outline: &mut serde_json::Value, requirements: &str) {
 }
 
 fn python_candidates() -> Vec<&'static str> {
+    // Prefer versioned 3.11–3.13 first: Homebrew python@3.14 often breaks
+    // `python -m venv` / ensurepip, which makes pipx's shared env fail.
     #[cfg(windows)]
     {
-        vec!["python3", "python", "py"]
+        vec![
+            "py",
+            "python3.12",
+            "python3.13",
+            "python3.11",
+            "python3",
+            "python",
+        ]
     }
     #[cfg(not(windows))]
     {
-        vec!["python3", "python"]
+        vec![
+            "python3.12",
+            "python3.13",
+            "python3.11",
+            "/opt/homebrew/bin/python3.12",
+            "/opt/homebrew/bin/python3.13",
+            "/opt/homebrew/bin/python3.11",
+            "/usr/local/bin/python3.12",
+            "/usr/local/bin/python3.13",
+            "/usr/local/bin/python3.11",
+            "python3",
+            "python",
+        ]
     }
+}
+
+fn resolve_python_candidate(cand: &str) -> Option<PathBuf> {
+    let path = PathBuf::from(cand);
+    if path.is_absolute() {
+        return path.is_file().then_some(path);
+    }
+    which(cand)
+}
+
+fn python_looks_venv_capable(python: &str) -> bool {
+    // Cheap probe: ensurepip import fails on some broken Homebrew bottles before
+    // pipx even gets to recreate Application Support/pipx/shared.
+    run_capture(python, &["-c", "import ensurepip, venv"]).ok
+}
+
+fn looks_like_pipx_ensurepip_failure(log: &str) -> bool {
+    let l = log.to_lowercase();
+    (l.contains("ensurepip") || l.contains("pipx/shared") || l.contains("venv --clear"))
+        && (l.contains("non-zero exit") || l.contains("failed") || l.contains("error"))
 }
 
 fn parse_semver(text: &str) -> Option<(u32, u32, u32)> {
@@ -777,28 +818,42 @@ fn parse_python_version(text: &str) -> Option<(u32, u32)> {
 }
 
 fn find_python() -> (Option<String>, Option<String>, bool) {
+    let mut fallback: Option<(String, String, bool)> = None;
     for cand in python_candidates() {
-        let Some(path) = which(cand) else { continue };
+        let Some(path) = resolve_python_candidate(cand) else {
+            continue;
+        };
+        let path_str = path.display().to_string();
         let ver = if cand == "py" {
             run_capture("py", &["-3", "--version"])
         } else {
-            run_capture(path.to_str().unwrap_or(cand), &["--version"])
+            run_capture(&path_str, &["--version"])
         };
         let version_text = if !ver.stdout.is_empty() {
             ver.stdout
         } else {
             ver.stderr
         };
-        if let Some((maj, min)) = parse_python_version(&version_text) {
-            let ok = maj > 3 || (maj == 3 && min >= 11);
-            return (
-                Some(path.display().to_string()),
-                Some(version_text.trim().to_string()),
-                ok,
-            );
+        let Some((maj, min)) = parse_python_version(&version_text) else {
+            continue;
+        };
+        let ok = maj > 3 || (maj == 3 && min >= 11);
+        if !ok {
+            continue;
+        }
+        let version = version_text.trim().to_string();
+        // Prefer interpreters that can still import ensurepip/venv (pipx-safe).
+        if python_looks_venv_capable(&path_str) {
+            return (Some(path_str), Some(version), true);
+        }
+        if fallback.is_none() {
+            fallback = Some((path_str, version, true));
         }
     }
-    (None, None, false)
+    match fallback {
+        Some((path, version, ok)) => (Some(path), Some(version), ok),
+        None => (None, None, false),
+    }
 }
 
 #[tauri::command]
@@ -936,22 +991,12 @@ fn install_cli_blocking(app: AppHandle) -> CommandResult {
     finalize_install(&app, result)
 }
 
-fn install_from_spec(app: &AppHandle, python: &str, spec: &str) -> CommandResult {
-    if which("pipx").is_some() {
-        let mut cmd = Command::new("pipx");
-        cmd.args(["install", "--force", spec]);
-        return stream_command(app, cmd, "Installing CLI", 55);
-    }
-    if run_capture(python, &["-m", "pipx", "--version"]).ok {
-        let mut cmd = Command::new(python);
-        cmd.args(["-m", "pipx", "install", "--force", spec]);
-        return stream_command(app, cmd, "Installing CLI", 55);
-    }
+fn install_with_pip_user(app: &AppHandle, python: &str, spec: &str) -> CommandResult {
     emit_install(
         app,
         "Installing CLI",
         58,
-        "pipx not found — using python -m pip --user",
+        "Using python -m pip --user",
         false,
     );
     let mut cmd = Command::new(python);
@@ -964,6 +1009,60 @@ fn install_from_spec(app: &AppHandle, python: &str, spec: &str) -> CommandResult
         );
     }
     r
+}
+
+fn install_from_spec(app: &AppHandle, python: &str, spec: &str) -> CommandResult {
+    if which("pipx").is_some() {
+        emit_install(app, "Installing CLI", 55, "Trying pipx…", false);
+        let mut cmd = Command::new("pipx");
+        // Pin the package interpreter when possible; still fall back if pipx's
+        // own shared env (often Homebrew 3.14) cannot recreate via ensurepip.
+        cmd.args(["install", "--force", "--python", python, spec]);
+        let r = stream_command(app, cmd, "Installing CLI", 55);
+        if r.ok {
+            return r;
+        }
+        let pipx_log = r.stdout.clone();
+        let reason = if looks_like_pipx_ensurepip_failure(&r.stdout) {
+            "pipx failed recreating its shared venv (common with Homebrew python@3.14 ensurepip) — falling back to pip --user"
+        } else {
+            "pipx install failed — falling back to pip --user"
+        };
+        emit_install(app, "Installing CLI", 57, reason, false);
+        let mut fallback = install_with_pip_user(app, python, spec);
+        fallback.stdout = format!("{pipx_log}\n{}", fallback.stdout).trim().to_string();
+        return fallback;
+    }
+
+    if run_capture(python, &["-m", "pipx", "--version"]).ok {
+        emit_install(app, "Installing CLI", 55, "Trying python -m pipx…", false);
+        let mut cmd = Command::new(python);
+        cmd.args(["-m", "pipx", "install", "--force", "--python", python, spec]);
+        let r = stream_command(app, cmd, "Installing CLI", 55);
+        if r.ok {
+            return r;
+        }
+        let pipx_log = r.stdout.clone();
+        emit_install(
+            app,
+            "Installing CLI",
+            57,
+            "python -m pipx failed — falling back to pip --user",
+            false,
+        );
+        let mut fallback = install_with_pip_user(app, python, spec);
+        fallback.stdout = format!("{pipx_log}\n{}", fallback.stdout).trim().to_string();
+        return fallback;
+    }
+
+    emit_install(
+        app,
+        "Installing CLI",
+        58,
+        "pipx not found — using python -m pip --user",
+        false,
+    );
+    install_with_pip_user(app, python, spec)
 }
 
 fn finalize_install(app: &AppHandle, mut result: CommandResult) -> CommandResult {
@@ -994,10 +1093,14 @@ fn finalize_install(app: &AppHandle, mut result: CommandResult) -> CommandResult
         return result;
     }
     if result.hint.is_none() {
-        result.hint = Some(
+        let hint = if looks_like_pipx_ensurepip_failure(&result.stdout)
+            || looks_like_pipx_ensurepip_failure(&result.stderr)
+        {
+            "Install failed while pipx recreated its shared venv (often Homebrew python@3.14 ensurepip). Try `brew install python@3.12` and re-run, or install the CLI from Terminal: curl -fsSL https://raw.githubusercontent.com/agent-on-rails/agent-on-rails-cli/main/scripts/install.sh | bash"
+        } else {
             "Install failed. The wizard downloads a GitHub tarball so a broken git-remote-https is not required."
-                .into(),
-        );
+        };
+        result.hint = Some(hint.into());
     }
     emit_install(app, "Failed", 0, result.hint.as_deref().unwrap_or("Install failed."), true);
     result
@@ -1340,6 +1443,13 @@ mod tests {
         assert_eq!(parse_python_version("Python 3.14.6"), Some((3, 14)));
         assert_eq!(parse_python_version("Python 3.10.12"), Some((3, 10)));
         assert_eq!(parse_python_version("nope"), None);
+    }
+
+    #[test]
+    fn detects_pipx_ensurepip_shared_venv_failure() {
+        let log = "Error: Command '['/Users/kamalkornain/Library/Application Support/pipx/shared/bin/python3.14', '-m', 'ensurepip', '--upgrade', '--default-pip']' returned non-zero exit status 1.\n'/opt/homebrew/opt/python@3.14/libexec/bin/python -m venv --clear /Users/kamalkornain/Library/Application Support/pipx/shared' failed";
+        assert!(looks_like_pipx_ensurepip_failure(log));
+        assert!(!looks_like_pipx_ensurepip_failure("Successfully installed agent-on-rails-cli"));
     }
 
     #[test]
