@@ -101,7 +101,7 @@ if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
   echo "    SKIP_BUILD=1 — using existing $OUT_DIR bundle"
 else
   npm install
-  npm run tauri build -- --bundles dmg,app
+  npm run tauri build -- --bundles app
 
   find_bundle() {
     local kind="$1"
@@ -121,7 +121,6 @@ else
   }
 
   APP_PATH="$(find_bundle macos '*.app')"
-  DMG_PATH="$(find_bundle dmg '*.dmg')"
 
   if [[ ! -d "$APP_PATH" ]]; then
     echo "error: .app not found after build"
@@ -131,9 +130,6 @@ else
   APP_NAME="$(basename "$APP_PATH")"
   rm -rf "$OUT_DIR/$APP_NAME"
   cp -R "$APP_PATH" "$OUT_DIR/"
-  if [[ -n "$DMG_PATH" && -f "$DMG_PATH" ]]; then
-    cp -f "$DMG_PATH" "$OUT_DIR/Agent-On-Rails-Setup-${VERSION}-macos.dmg"
-  fi
 fi
 
 APP_NAME="${APP_NAME:-Agent On Rails Setup.app}"
@@ -166,14 +162,35 @@ if should_notarize; then
     exit 1
   fi
   xcrun stapler staple "$OUT_DIR/$APP_NAME"
-  # Re-pack DMG from stapled app if hdiutil available
-  if command -v hdiutil >/dev/null; then
-    DMG_OUT="$OUT_DIR/Agent-On-Rails-Setup-${VERSION}-macos.dmg"
-    rm -f "$DMG_OUT"
-    hdiutil create -volname "Agent On Rails Setup" -srcfolder "$OUT_DIR/$APP_NAME" -ov -format UDZO "$DMG_OUT"
+  echo "==> Creating drag-and-drop DMG"
+  DMG_OUT="$OUT_DIR/Agent-On-Rails-Setup-${VERSION}-macos.dmg"
+  rm -f "$DMG_OUT"
+  bash "$ROOT_DIR/scripts/create-dmg.sh" "$OUT_DIR/$APP_NAME" "$DMG_OUT" "Agent On Rails Setup"
+  echo "==> Signing DMG"
+  codesign --force --sign "$APPLE_SIGNING_IDENTITY" --timestamp "$DMG_OUT"
+  echo "==> Notarizing DMG"
+  SUBMIT_JSON="$(mktemp)"
+  xcrun notarytool submit "$DMG_OUT" "${NOTARY_AUTH_ARGS[@]}" --output-format json >"$SUBMIT_JSON"
+  DMG_SUBMISSION_ID="$(python3 -c "import json; print(json.load(open('$SUBMIT_JSON')).get('id',''))")"
+  rm -f "$SUBMIT_JSON"
+  if [[ -z "$DMG_SUBMISSION_ID" ]]; then
+    echo "error: DMG notarization submit failed"
+    exit 1
   fi
+  echo "    DMG submission: $DMG_SUBMISSION_ID"
+  xcrun notarytool wait "$DMG_SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}" --timeout 1h --progress
+  DMG_STATUS="$(xcrun notarytool info "$DMG_SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}" --output-format json | python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))")"
+  if [[ "$DMG_STATUS" != "Accepted" ]]; then
+    echo "DMG notarization status: $DMG_STATUS"
+    xcrun notarytool log "$DMG_SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}" || true
+    exit 1
+  fi
+  xcrun stapler staple "$DMG_OUT"
+  xcrun stapler validate "$DMG_OUT"
 else
   echo "warning: notarization skipped (configure AC_NOTARY or APPLE_APP_SPECIFIC_PASSWORD)"
+  DMG_OUT="$OUT_DIR/Agent-On-Rails-Setup-${VERSION}-macos.dmg"
+  bash "$ROOT_DIR/scripts/create-dmg.sh" "$OUT_DIR/$APP_NAME" "$DMG_OUT" "Agent On Rails Setup"
 fi
 
 # Sparkle ZIP + appcast

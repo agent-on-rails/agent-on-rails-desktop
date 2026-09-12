@@ -81,6 +81,14 @@ body {
   font-size: 0.85rem;
 }
 
+.top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .steps {
   display: flex;
   flex-wrap: wrap;

@@ -1224,6 +1224,43 @@ fn open_folder(path: String) -> CommandResult {
     }
 }
 
+#[cfg(target_os = "macos")]
+fn install_macos_menu(app: &tauri::AppHandle) -> tauri::Result<()> {
+    use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
+
+    let check = MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(app)?;
+    let app_submenu = SubmenuBuilder::new(app, "Agent On Rails Setup")
+        .item(&PredefinedMenuItem::about(app, None, None)?)
+        .item(&check)
+        .separator()
+        .hide()
+        .hide_others()
+        .show_all()
+        .separator()
+        .quit()
+        .build()?;
+    let edit = SubmenuBuilder::new(app, "Edit")
+        .undo()
+        .redo()
+        .separator()
+        .cut()
+        .copy()
+        .paste()
+        .select_all()
+        .build()?;
+    let window = SubmenuBuilder::new(app, "Window")
+        .minimize()
+        .close_window()
+        .build()?;
+    let menu = MenuBuilder::new(app)
+        .item(&app_submenu)
+        .item(&edit)
+        .item(&window)
+        .build()?;
+    app.set_menu(menu)?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default()
@@ -1242,6 +1279,10 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            {
+                install_macos_menu(app.handle())?;
+            }
             #[cfg(not(any(target_os = "android", target_os = "ios", target_os = "macos")))]
             {
                 use tauri_plugin_updater::UpdaterExt;
@@ -1262,6 +1303,18 @@ pub fn run() {
                 }
             }
             Ok(())
+        })
+        .on_menu_event(|app, event| {
+            if event.id() != "check-updates" {
+                return;
+            }
+            #[cfg(target_os = "macos")]
+            {
+                use tauri_plugin_sparkle_updater::SparkleUpdaterExt;
+                if let Some(updater) = app.sparkle_updater() {
+                    let _ = updater.check_for_updates();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             check_prerequisites,

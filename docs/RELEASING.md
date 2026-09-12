@@ -33,6 +33,10 @@ bash scripts/release-macos.sh
 Then deploy the website (image + Argo) so
 https://agent-on-rails.suherman.net/downloads/appcast.xml is live.
 
+macOS DMG is a **drag-and-drop installer** (app + Applications alias), matching Nucleus. Open the DMG and drag **Agent On Rails Setup** into Applications. Sparkle **Check for Updates…** is in the app menu and the wizard header.
+
+`create-dmg` (Homebrew) produces the Finder layout; without it the script falls back to `hdiutil` plus an Applications symlink.
+
 ## Windows (CI)
 
 Push a tag `desktop-v*` or run the **Release** workflow. Secrets:

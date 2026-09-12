@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Agent On Rails Setup",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "net.suherman.agent-on-rails.setup",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -21,7 +21,11 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        "default",
+        "macos-updater"
+      ]
     }
   },
   "bundle": {

@@ -693,6 +693,17 @@ function goBack() {
   render();
 }
 
+async function checkForAppUpdates() {
+  try {
+    const { checkForUpdates } = await import("tauri-plugin-sparkle-updater-api");
+    await checkForUpdates();
+  } catch (err) {
+    window.alert(
+      `Could not check for updates from this build.\n\n${String(err)}\n\nUse the packaged app from Applications, or download https://agent-on-rails.suherman.net/downloads/Agent-On-Rails-Setup-macos.dmg`,
+    );
+  }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   try {
     links = await invoke<Links>("links");
@@ -706,6 +717,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
   btnBack().addEventListener("click", goBack);
   btnNext().addEventListener("click", () => void goNext());
+  const updatesBtn = document.querySelector("#btn-updates");
+  if (updatesBtn) {
+    const sparkleAvailable = /mac/i.test(navigator.userAgent);
+    updatesBtn.toggleAttribute("hidden", !sparkleAvailable);
+    if (sparkleAvailable) {
+      updatesBtn.addEventListener("click", () => void checkForAppUpdates());
+    }
+  }
   document.querySelector("#install-close")?.addEventListener("click", hideInstallModal);
   render();
 });

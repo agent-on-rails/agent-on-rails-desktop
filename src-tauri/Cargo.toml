@@ -1,6 +1,6 @@
 [package]
 name = "agent-on-rails-desktop"
-version = "0.1.1"
+version = "0.1.2"
 description = "Agent On Rails macOS/Windows setup wizard (AOR-008)"
 authors = ["Agent On Rails"]
 edition = "2021"
