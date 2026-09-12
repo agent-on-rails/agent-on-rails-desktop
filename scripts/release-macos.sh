@@ -132,7 +132,7 @@ else
   cp -R "$APP_PATH" "$OUT_DIR/"
 fi
 
-APP_NAME="${APP_NAME:-Agent On Rails Setup.app}"
+APP_NAME="${APP_NAME:-Agent On Rails.app}"
 if [[ ! -d "$OUT_DIR/$APP_NAME" ]]; then
   echo "error: $OUT_DIR/$APP_NAME not found"
   exit 1
@@ -165,7 +165,8 @@ if should_notarize; then
   echo "==> Creating drag-and-drop DMG"
   DMG_OUT="$OUT_DIR/Agent-On-Rails-Setup-${VERSION}-macos.dmg"
   rm -f "$DMG_OUT"
-  bash "$ROOT_DIR/scripts/create-dmg.sh" "$OUT_DIR/$APP_NAME" "$DMG_OUT" "Agent On Rails Setup"
+  # Finder layout needs a GUI session; CI=true makes create-dmg skip it.
+  env -u CI -u JENKINS_HOME bash "$ROOT_DIR/scripts/create-dmg.sh" "$OUT_DIR/$APP_NAME" "$DMG_OUT" "Agent On Rails"
   echo "==> Signing DMG"
   codesign --force --sign "$APPLE_SIGNING_IDENTITY" --timestamp "$DMG_OUT"
   echo "==> Notarizing DMG"
@@ -190,7 +191,7 @@ if should_notarize; then
 else
   echo "warning: notarization skipped (configure AC_NOTARY or APPLE_APP_SPECIFIC_PASSWORD)"
   DMG_OUT="$OUT_DIR/Agent-On-Rails-Setup-${VERSION}-macos.dmg"
-  bash "$ROOT_DIR/scripts/create-dmg.sh" "$OUT_DIR/$APP_NAME" "$DMG_OUT" "Agent On Rails Setup"
+  env -u CI -u JENKINS_HOME bash "$ROOT_DIR/scripts/create-dmg.sh" "$OUT_DIR/$APP_NAME" "$DMG_OUT" "Agent On Rails"
 fi
 
 # Sparkle ZIP + appcast
@@ -228,7 +229,7 @@ zip_name = f"Agent-On-Rails-Setup-{version}.zip"
 # Prefer existing latest.json merge
 path = downloads / "latest.json"
 now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-data = {"version": version, "notes": "Agent On Rails Setup", "pub_date": now, "platforms": {}}
+data = {"version": version, "notes": "Agent On Rails", "pub_date": now, "platforms": {}}
 if path.exists():
     try:
         data = json.loads(path.read_text())

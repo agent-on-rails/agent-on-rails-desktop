@@ -3,7 +3,7 @@
 set -euo pipefail
 
 DMG_PATH="${1:?DMG path required}"
-VOLUME_NAME="${2:-Agent On Rails Setup}"
+VOLUME_NAME="${2:-Agent On Rails}"
 
 if [[ ! -f "$DMG_PATH" ]]; then
   echo "DMG not found: $DMG_PATH"

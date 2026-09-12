@@ -1229,7 +1229,7 @@ fn install_macos_menu(app: &tauri::AppHandle) -> tauri::Result<()> {
     use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 
     let check = MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(app)?;
-    let app_submenu = SubmenuBuilder::new(app, "Agent On Rails Setup")
+    let app_submenu = SubmenuBuilder::new(app, "Agent On Rails")
         .item(&PredefinedMenuItem::about(app, None, None)?)
         .item(&check)
         .separator()

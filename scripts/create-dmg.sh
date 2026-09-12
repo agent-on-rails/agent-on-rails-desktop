@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Drag-and-drop DMG: app on the left, Applications drop-link on the right (Nucleus layout).
+# Finder AppleScript needs a GUI session — do not run this under CI=true.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_PATH="${1:?Usage: create-dmg.sh <App.app> [output.dmg] [volume name]}"
-OUTPUT_DMG="${2:-$ROOT_DIR/dist-release/Agent-On-Rails-Setup-macos.dmg}"
-VOLUME_NAME="${3:-Agent On Rails Setup}"
+OUTPUT_DMG="${2:-$ROOT_DIR/dist-release/Agent-On-Rails-macos.dmg}"
+VOLUME_NAME="${3:-Agent On Rails}"
+BACKGROUND="$ROOT_DIR/scripts/dmg-background.png"
+
+# create-dmg skips Finder layout when Jenkins/CI env is set.
+unset CI JENKINS_HOME BUILD_NUMBER TEAMCITY_VERSION || true
 
 if [[ ! -d "$APP_PATH" ]]; then
   echo "App not found: $APP_PATH"
@@ -27,26 +32,42 @@ for candidate in "${ICON_CANDIDATES[@]}"; do
   fi
 done
 
+if [[ ! -f "$BACKGROUND" ]]; then
+  echo "==> Generating DMG background"
+  swift "$ROOT_DIR/scripts/generate-dmg-background.swift" "$BACKGROUND"
+fi
+
 mkdir -p "$(dirname "$OUTPUT_DMG")"
 rm -f "$OUTPUT_DMG"
+
+STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/aor-dmg-stage.XXXXXX")"
+cleanup() {
+  rm -rf "$STAGING_DIR"
+}
+trap cleanup EXIT
+
+# Stage a folder so the DMG contains the .app bundle (not its Contents/).
+cp -R "$APP_PATH" "$STAGING_DIR/$APP_NAME"
 
 if command -v create-dmg >/dev/null 2>&1; then
   echo "==> Creating drag-and-drop DMG with create-dmg"
   CREATE_DMG_ARGS=(
     --volname "$VOLUME_NAME"
+    --background "$BACKGROUND"
     --window-pos 200 120
     --window-size 660 400
     --icon-size 128
+    --text-size 14
     --icon "$APP_NAME" 180 185
     --hide-extension "$APP_NAME"
     --app-drop-link 480 185
+    --no-internet-enable
   )
   if [[ -n "$ICON_PATH" ]]; then
     CREATE_DMG_ARGS=(--volicon "$ICON_PATH" "${CREATE_DMG_ARGS[@]}")
   fi
-  # create-dmg sometimes exits 2 when Finder layout tweaks fail but still writes the DMG.
   set +e
-  create-dmg "${CREATE_DMG_ARGS[@]}" "$OUTPUT_DMG" "$APP_PATH"
+  create-dmg "${CREATE_DMG_ARGS[@]}" "$OUTPUT_DMG" "$STAGING_DIR"
   CREATE_STATUS=$?
   set -e
   if [[ ! -f "$OUTPUT_DMG" ]]; then
@@ -58,9 +79,6 @@ if command -v create-dmg >/dev/null 2>&1; then
   }
 else
   echo "==> Creating DMG with hdiutil (install create-dmg for the Nucleus layout: brew install create-dmg)"
-  STAGING_DIR="$(mktemp -d)"
-  trap 'rm -rf "$STAGING_DIR"' EXIT
-  cp -R "$APP_PATH" "$STAGING_DIR/$APP_NAME"
   ln -s /Applications "$STAGING_DIR/Applications"
   hdiutil create \
     -volname "$VOLUME_NAME" \
