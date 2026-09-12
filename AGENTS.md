@@ -6,13 +6,13 @@ Governing contracts: **ADR-008**, **AOR-008**.
 
 ## Boundaries
 
-- **Setup / onboarding only**: prerequisites, install `aor`, `aor init`, links to docs.
+- **Setup / onboarding only**: prerequisites, install `aor`, `aor init`, optional `aor gather` (AOR-010), links to docs.
 - Do **not** re-implement planner, review loop, evidence, or GitHub App logic.
 - Do **not** approve specs or mark tasks `DONE` from this app.
 - After setup, operators use the CLI/TUI (`aor`) and GitHub.
 
 ## Prohibited
 
-- Storing API keys or secrets in the app bundle or source
+- Storing API keys or secrets in the app bundle, preferences, or source (gather uses env / `~/.config/agent-on-rails/llm.yaml` already on the machine)
 - Building a full desktop operator console here (that is a later product surface)
 - Bypassing human-approval policies

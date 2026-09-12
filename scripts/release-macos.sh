@@ -59,7 +59,36 @@ print("Updated tauri.conf.json pubkey + signingIdentity")
 PY
 fi
 
+sign_bundle_for_notarization() {
+  local app="$1"
+  local identity="${APPLE_SIGNING_IDENTITY}"
+  local sparkle="$app/Contents/Frameworks/Sparkle.framework"
+  local flags=(--force --options runtime --timestamp --sign "$identity")
+  if [[ -d "$sparkle" ]]; then
+    echo "==> Signing Sparkle nested binaries"
+    if [[ -x "$sparkle/Versions/B/Autoupdate" ]]; then
+      codesign "${flags[@]}" "$sparkle/Versions/B/Autoupdate"
+    fi
+    if [[ -d "$sparkle/Versions/B/Updater.app" ]]; then
+      codesign "${flags[@]}" "$sparkle/Versions/B/Updater.app/Contents/MacOS/Updater"
+      codesign "${flags[@]}" "$sparkle/Versions/B/Updater.app"
+    fi
+    for xpc in "$sparkle/Versions/B/XPCServices"/*.xpc; do
+      [[ -d "$xpc" ]] || continue
+      codesign "${flags[@]}" "$xpc"
+    done
+    codesign "${flags[@]}" "$sparkle"
+  fi
+  echo "==> Re-signing $(basename "$app")"
+  codesign "${flags[@]}" "$app"
+  codesign --verify --deep --strict "$app"
+}
+
 mkdir -p "$OUT_DIR"
+# Cursor/CI may point cargo at a sandbox cache; keep release artifacts in-tree
+# but still discover bundles written to that cache.
+SAVED_CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-}"
+unset CARGO_TARGET_DIR
 export CI=true
 export APPLE_SIGNING_IDENTITY
 # Plugin build.rs looks for Sparkle next to OUT_DIR ancestors; CARGO_TARGET_DIR may break that.
@@ -68,22 +97,52 @@ export TAURI_SIGNING_PRIVATE_KEY_PATH="${TAURI_SIGNING_PRIVATE_KEY_PATH:-$ROOT_D
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
 
 echo "==> Building signed macOS bundles (v${VERSION})"
-npm install
-npm run tauri build -- --bundles dmg,app
+if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
+  echo "    SKIP_BUILD=1 — using existing $OUT_DIR bundle"
+else
+  npm install
+  npm run tauri build -- --bundles dmg,app
 
-APP_PATH="$(find "$ROOT_DIR/src-tauri/target/release/bundle/macos" -maxdepth 1 -name '*.app' -type d | head -1)"
-DMG_PATH="$(find "$ROOT_DIR/src-tauri/target/release/bundle/dmg" -maxdepth 1 -name '*.dmg' -type f | head -1 || true)"
+  find_bundle() {
+    local kind="$1"
+    local glob="$2"
+    local p
+    for dir in \
+      "$ROOT_DIR/src-tauri/target/release/bundle/$kind" \
+      "${SAVED_CARGO_TARGET_DIR}/release/bundle/$kind"
+    do
+      [[ -d "$dir" ]] || continue
+      p="$(find "$dir" -maxdepth 1 -name "$glob" -print0 2>/dev/null | xargs -0 ls -td 2>/dev/null | head -1 || true)"
+      if [[ -n "$p" && ( -d "$p" || -f "$p" ) ]]; then
+        echo "$p"
+        return 0
+      fi
+    done
+  }
 
-if [[ ! -d "$APP_PATH" ]]; then
-  echo "error: .app not found after build"
+  APP_PATH="$(find_bundle macos '*.app')"
+  DMG_PATH="$(find_bundle dmg '*.dmg')"
+
+  if [[ ! -d "$APP_PATH" ]]; then
+    echo "error: .app not found after build"
+    exit 1
+  fi
+
+  APP_NAME="$(basename "$APP_PATH")"
+  rm -rf "$OUT_DIR/$APP_NAME"
+  cp -R "$APP_PATH" "$OUT_DIR/"
+  if [[ -n "$DMG_PATH" && -f "$DMG_PATH" ]]; then
+    cp -f "$DMG_PATH" "$OUT_DIR/Agent-On-Rails-Setup-${VERSION}-macos.dmg"
+  fi
+fi
+
+APP_NAME="${APP_NAME:-Agent On Rails Setup.app}"
+if [[ ! -d "$OUT_DIR/$APP_NAME" ]]; then
+  echo "error: $OUT_DIR/$APP_NAME not found"
   exit 1
 fi
 
-APP_NAME="$(basename "$APP_PATH")"
-cp -R "$APP_PATH" "$OUT_DIR/"
-if [[ -n "$DMG_PATH" && -f "$DMG_PATH" ]]; then
-  cp -f "$DMG_PATH" "$OUT_DIR/Agent-On-Rails-Setup-${VERSION}-macos.dmg"
-fi
+sign_bundle_for_notarization "$OUT_DIR/$APP_NAME"
 
 if should_notarize; then
   append_notary_auth_args
@@ -120,8 +179,9 @@ fi
 # Sparkle ZIP + appcast
 SPARKLE_DIR="$OUT_DIR/sparkle"
 mkdir -p "$SPARKLE_DIR"
+# generate_appcast rejects two zips with the same bundle version.
+find "$SPARKLE_DIR" -maxdepth 1 -name '*.zip' -delete
 ZIP_PATH="$SPARKLE_DIR/Agent-On-Rails-Setup-${VERSION}.zip"
-rm -f "$ZIP_PATH"
 COPYFILE_DISABLE=1 ditto -c -k --sequesterRsrc --keepParent "$OUT_DIR/$APP_NAME" "$ZIP_PATH"
 
 echo "==> Generating Sparkle appcast"

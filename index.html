@@ -5,13 +5,14 @@
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Agent On Rails Setup</title>
+    <link rel="icon" type="image/png" href="./src/assets/logo-mark.png" />
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body>
     <div class="shell">
       <header class="top">
         <div class="brand">
-          <span class="mark" aria-hidden="true"></span>
+          <img class="mark" src="./src/assets/logo-mark.png" alt="" width="40" height="40" />
           <div>
             <p class="brand-name">Agent On Rails</p>
             <p class="brand-sub">Setup wizard</p>
@@ -27,6 +28,25 @@
         <div class="foot-spacer"></div>
         <button type="button" class="btn primary" id="btn-next">Continue</button>
       </footer>
+    </div>
+
+    <div id="install-modal" class="modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="install-title">
+        <h2 id="install-title">Installing aor CLI</h2>
+        <p class="stage" id="install-stage">Starting…</p>
+        <div
+          class="progress"
+          id="install-progressbar"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <div class="progress-bar" id="install-bar"></div>
+        </div>
+        <pre class="log modal-log" id="install-stream"></pre>
+        <button type="button" class="btn primary" id="install-close" disabled>Done</button>
+      </div>
     </div>
   </body>
 </html>

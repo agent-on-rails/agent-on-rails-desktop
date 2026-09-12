@@ -62,10 +62,9 @@ body {
 .mark {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background:
-    linear-gradient(145deg, var(--rail), var(--rail-deep));
-  box-shadow: 0 10px 24px rgba(20, 144, 212, 0.28);
+  flex-shrink: 0;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-name {
@@ -207,9 +206,88 @@ body {
   color: var(--ink);
 }
 
-.field input:focus {
+.field textarea {
+  width: 100%;
+  min-height: 9rem;
+  resize: vertical;
+  border: 1px solid rgba(11, 31, 58, 0.14);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #fff;
+  color: var(--ink);
+}
+
+.field textarea:focus {
   outline: 2px solid color-mix(in srgb, var(--rail) 55%, white);
   outline-offset: 1px;
+}
+
+.outline-card {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--rail-wash);
+  border: 1px solid color-mix(in srgb, var(--rail) 28%, white);
+}
+
+.outline-card h2 {
+  margin: 0 0 4px;
+  font-family: "Bricolage Grotesque", Figtree, sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.outline-tagline {
+  margin: 0 0 12px;
+  color: var(--ink-mute);
+}
+
+.outline-reqs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.outline-reqs li {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(11, 31, 58, 0.06);
+}
+
+.req-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--rail-deep);
+  white-space: nowrap;
+  padding-top: 2px;
+}
+
+.req-body {
+  min-width: 0;
+}
+
+.req-title {
+  display: block;
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+
+.req-shall {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--ink-mute);
+  line-height: 1.45;
+  overflow-wrap: break-word;
 }
 
 .row-inline {
@@ -316,4 +394,66 @@ body {
 
 .done-list li {
   margin-bottom: 8px;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(11, 31, 58, 0.45);
+  backdrop-filter: blur(6px);
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal-card {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 18px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 24px 60px rgba(11, 31, 58, 0.28);
+}
+
+.modal-card h2 {
+  margin: 0 0 6px;
+  font-family: "Bricolage Grotesque", Figtree, sans-serif;
+  font-size: 1.25rem;
+}
+
+.stage {
+  margin: 0 0 12px;
+  color: var(--ink-mute);
+  font-size: 0.92rem;
+}
+
+.progress {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(11, 31, 58, 0.08);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--rail), var(--rail-deep));
+  transition: width 0.2s ease;
+}
+
+.modal-log {
+  max-height: 220px;
+  margin-top: 14px;
+}
+
+.modal-card .btn {
+  margin-top: 16px;
+  width: 100%;
 }

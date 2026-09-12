@@ -7,7 +7,8 @@ It does **not** replace the `aor` CLI/TUI. Flow:
 1. Check Python 3.11+ / pipx / `aor`
 2. Install or upgrade the CLI from `agent-on-rails-cli`
 3. Run `aor init` for a docs+specs project
-4. Hand off to [walkthrough](https://github.com/agent-on-rails/agent-on-rails-cli/blob/main/docs/walkthrough.md)
+4. Optional: paste requirements → confirm outline → write SurveyDesk-shaped `specs/` (`aor gather`, AOR-010)
+5. Hand off to [walkthrough](https://github.com/agent-on-rails/agent-on-rails-cli/blob/main/docs/walkthrough.md)
 
 Stack: **Tauri 2** + TypeScript (vanilla).
 
@@ -28,6 +29,12 @@ Requires: Node 20+, Rust (rustup), Python 3.11+ on the machine you will install 
 ```bash
 npm install
 npm run tauri dev
+```
+
+macOS dock / `.app` icons come from the control-plane brand mark (`brand/logo-mark.png`). Regenerate with:
+
+```bash
+npx tauri icon ../agent-on-rails-control-plane/brand/logo-mark.png
 ```
 
 Unit tests (Rust):
