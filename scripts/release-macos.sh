@@ -227,11 +227,13 @@ version = "$VERSION"
 zip_name = f"Agent-On-Rails-Setup-{version}.zip"
 # Prefer existing latest.json merge
 path = downloads / "latest.json"
-data = {"version": version, "notes": "Agent On Rails Setup", "pub_date": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "platforms": {}}
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+data = {"version": version, "notes": "Agent On Rails Setup", "pub_date": now, "platforms": {}}
 if path.exists():
     try:
         data = json.loads(path.read_text())
         data["version"] = version
+        data["pub_date"] = now
     except Exception:
         pass
 # Tauri updater platform keys: darwin-aarch64 / darwin-x86_64
